@@ -105,6 +105,7 @@ func (a *Alist) Name() string {
 func (a *Alist) Save(ctx context.Context, reader io.Reader, storagePath string) error {
 	a.logger.Infof("Saving file to %s", storagePath)
 
+	storagePath = a.JoinStoragePath(storagePath)
 	ext := path.Ext(storagePath)
 	base := strings.TrimSuffix(storagePath, ext)
 	candidate := storagePath
@@ -170,7 +171,7 @@ func (a *Alist) Exists(ctx context.Context, storagePath string) bool {
 		}
 	*/
 	body := map[string]any{
-		"path":     storagePath,
+		"path":     a.JoinStoragePath(storagePath),
 		"password": "",
 	}
 	bodyBytes, err := json.Marshal(body)
@@ -222,7 +223,7 @@ func (a *Alist) ListFiles(ctx context.Context, dirPath string) ([]storagetypes.F
 	a.logger.Debugf("Listing files in directory: %s", dirPath)
 
 	reqBody := fsListRequest{
-		Path:     dirPath,
+		Path:     a.JoinStoragePath(dirPath),
 		Password: "",
 		Page:     1,
 		PerPage:  0, // 0 means all files
@@ -298,9 +299,11 @@ func (a *Alist) ListFiles(ctx context.Context, dirPath string) ([]storagetypes.F
 func (a *Alist) OpenFile(ctx context.Context, filePath string) (io.ReadCloser, int64, error) {
 	a.logger.Debugf("Opening file: %s", filePath)
 
+	fullPath := a.JoinStoragePath(filePath)
+
 	// First, get file info to get the raw_url
 	reqBody := map[string]any{
-		"path":     filePath,
+		"path":     fullPath,
 		"password": "",
 	}
 
@@ -348,7 +351,7 @@ func (a *Alist) OpenFile(ctx context.Context, filePath string) (io.ReadCloser, i
 	downloadURL := getResp.Data.RawURL
 	if downloadURL == "" {
 		// If no raw_url, construct download URL
-		downloadURL = a.baseURL + "/d" + filePath
+		downloadURL = a.baseURL + "/d" + fullPath
 	}
 
 	downloadReq, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
